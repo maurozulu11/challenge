@@ -205,7 +205,7 @@ def departments_above_average():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Fetch department hires with department names
+
     cursor.execute("""
         SELECT d.id, d.department, COUNT(*) AS hired
         FROM hired_employees h
@@ -221,7 +221,7 @@ def departments_above_average():
         conn.close()
         return {"message": "No data found"}
 
-    # Fetch the average number of hires
+ 
     cursor.execute("""
         SELECT AVG(hired_count) FROM (
             SELECT COUNT(*) AS hired_count
@@ -232,15 +232,13 @@ def departments_above_average():
     """)
     avg_hired = cursor.fetchone()[0] or 0
 
-    print("🔹 Average Hires:", avg_hired)  # Debug Print
-
-    # Filter departments above the average
+    print("🔹 Average Hires:", avg_hired)  
     above_avg_departments = [
         {"id": row[0], "department": row[1], "hired": row[2]}
         for row in departments if row[2] > avg_hired
     ]
 
-    print("🔹 Above Average Departments:", above_avg_departments)  # Debug Print
+    print("🔹 Above Average Departments:", above_avg_departments) 
 
     conn.close()
     return {"departments": above_avg_departments}
