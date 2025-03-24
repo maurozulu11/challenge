@@ -177,6 +177,73 @@ def restore_table(table_name: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/employees_per_quarter/")
+def employees_per_quarter():
+    query = """
+        SELECT d.department, j.job, 
+            SUM(CASE WHEN strftime('%m', he.datetime) IN ('01', '02', '03') THEN 1 ELSE 0 END) AS Q1,
+            SUM(CASE WHEN strftime('%m', he.datetime) IN ('04', '05', '06') THEN 1 ELSE 0 END) AS Q2,
+            SUM(CASE WHEN strftime('%m', he.datetime) IN ('07', '08', '09') THEN 1 ELSE 0 END) AS Q3,
+            SUM(CASE WHEN strftime('%m', he.datetime) IN ('10', '11', '12') THEN 1 ELSE 0 END) AS Q4
+        FROM hired_employees he
+        JOIN departments d ON he.department_id = d.id
+        JOIN jobs j ON he.job_id = j.id
+        WHERE strftime('%Y', he.datetime) = '2021'
+        GROUP BY d.department, j.job
+        ORDER BY d.department ASC, j.job ASC;
+    """
+    
+    conn = get_db_connection()
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    return df.to_dict(orient="records")
+
+@app.get("/departments_above_average", include_in_schema=True)
+def departments_above_average():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Fetch department hires with department names
+    cursor.execute("""
+        SELECT d.id, d.department, COUNT(*) AS hired
+        FROM hired_employees h
+        JOIN departments d ON h.department_id = d.id
+        WHERE h.datetime LIKE '2021%'
+        GROUP BY d.id, d.department
+    """)
+    departments = cursor.fetchall()
+
+    print("\n🔹 Departments Hired in 2021:", departments)  # Debug Print
+
+    if not departments:
+        conn.close()
+        return {"message": "No data found"}
+
+    # Fetch the average number of hires
+    cursor.execute("""
+        SELECT AVG(hired_count) FROM (
+            SELECT COUNT(*) AS hired_count
+            FROM hired_employees
+            WHERE datetime LIKE '2021%'
+            GROUP BY department_id
+        )
+    """)
+    avg_hired = cursor.fetchone()[0] or 0
+
+    print("🔹 Average Hires:", avg_hired)  # Debug Print
+
+    # Filter departments above the average
+    above_avg_departments = [
+        {"id": row[0], "department": row[1], "hired": row[2]}
+        for row in departments if row[2] > avg_hired
+    ]
+
+    print("🔹 Above Average Departments:", above_avg_departments)  # Debug Print
+
+    conn.close()
+    return {"departments": above_avg_departments}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=9000, reload=True)
