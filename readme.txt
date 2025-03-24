@@ -9,5 +9,5 @@ This project is an API service built with **FastAPI** and **SQLite**, allowing u
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/your_username/your_project.git
+   git clone https://github.com/maurozulu11/challenge.git
    cd your_project
